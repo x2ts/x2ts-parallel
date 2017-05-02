@@ -193,6 +193,7 @@ class Runner extends Component {
             'worker_num'            => $this->conf['workerNum'],
             'backlog'               => $this->conf['backlog'],
             'max_request'           => $this->conf['maxRequest'],
+            'daemonize'             => 1,
             'open_length_check'     => true,
             'package_length_type'   => 'N',
             'package_length_offset' => 1,
