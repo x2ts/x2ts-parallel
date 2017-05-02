@@ -187,6 +187,10 @@ class Runner extends Component {
     }
 
     public function start() {
+        if ($this->code) {
+            ComponentFactory::logger()->crit('Do not call start() on the client side!');
+            return;
+        }
         $this->server = new Server($this->conf['sock'], 0, SWOOLE_PROCESS, SWOOLE_SOCK_UNIX_STREAM);
         $this->server->set([
             'reactor_num'           => 1,
