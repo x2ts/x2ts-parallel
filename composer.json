@@ -1,0 +1,25 @@
+{
+  "name": "x2ts/x2ts-parallel",
+  "description": "Parallel runner",
+  "type": "library",
+  "license": "BSD",
+  "authors": [
+    {
+      "name": "TingSong-Syu",
+      "email": "rek@rek.me"
+    }
+  ],
+  "require": {
+    "x2ts/x2ts": "^2.0",
+    "ext-swoole": ">=1.9.6",
+    "ext-Reflection": ">=7.0",
+    "nikic/php-parser": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "x2ts\\parallel\\": [
+        "src"
+      ]
+    }
+  }
+}
