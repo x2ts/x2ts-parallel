@@ -178,6 +178,7 @@ class Runner extends Component {
             ComponentFactory::logger()->crit('You must init parallel runner with closure before run');
             return;
         }
+
         $msg = swoole_serialize::pack([
             'function' => $this->code,
             'args'     => $args,
@@ -241,9 +242,20 @@ class Runner extends Component {
         $call = swoole_serialize::unpack($msg);
 //        ComponentFactory::logger()->trace("Code to be run:\n" . $call['function']);
 //        ComponentFactory::logger()->trace($call['args']);
+        ComponentFactory::bus()->dispatch(new PreRun([
+            'dispatcher' => $this,
+            'code'       => $call['function'],
+            'args'       => $call['args'],
+        ]));
         /** @var Closure $f */
         eval("\$f = {$call['function']};");
-        $f(...$call['args']);
+        $r = $f(...$call['args']);
+        ComponentFactory::bus()->dispatch(new PostRun([
+            'dispatcher' => $this,
+            'code'       => $call['function'],
+            'args'       => $call['args'],
+            'result'     => $r,
+        ]));
     }
 
     private function lock() {

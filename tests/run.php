@@ -51,6 +51,6 @@ $p = X::getInstance(Runner::class, [
 
 ], 'parallel');
 
-for ($i = 0; $i < 5000; $i++) {
+for ($i = 0; $i < 5; $i++) {
     $p->run($i);
 }

@@ -12,11 +12,15 @@ use x2ts\ComponentFactory as X;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 
+X::bus()->on(PreRun::NAME, function (PreRun $ev) {
+    var_dump($ev);
+});
 /** @var Runner $p */
 $p = X::getInstance(Runner::class, [], [
     'sock'        => __DIR__ . '/parallel.sock',
     'pid'         => __DIR__ . '/parallel.pid',
     'lock'        => __DIR__ . '/parallel.lock',
+    'daemonize'   => false,
     'worker_num'  => 4,
     'backlog'     => 128,
     'max_request' => 50,
