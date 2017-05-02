@@ -174,6 +174,10 @@ class Runner extends Component {
     }
 
     public function run(...$args) {
+        if (empty($this->code)) {
+            ComponentFactory::logger()->crit('You must init parallel runner with closure before run');
+            return;
+        }
         $msg = swoole_serialize::pack([
             'function' => $this->code,
             'args'     => $args,
