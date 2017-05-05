@@ -221,6 +221,13 @@ class Runner extends Component {
                 }
             }
         });
+        $this->server->on('ShutDown', function () {
+            if (is_resource($this->locker)) {
+                flock($this->locker, LOCK_UN);
+                fclose($this->locker);
+                unlink($this->conf['lock']);
+            }
+        });
         $this->server->on('WorkerStart', function (Server $server) {
             ComponentFactory::logger()->notice('Parallel worker start ' . $server->worker_pid);
             @swoole_set_process_name($this->conf['name'] . ': worker');
