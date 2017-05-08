@@ -112,9 +112,16 @@ class Runner extends Component {
                     $this->uses[$node->alias] = (string) $node->name;
                 } elseif ($this->inClosure && $node instanceof Node\Stmt\Class_) {
                     $this->inClass = true;
-                } elseif (!$this->inClass && $node instanceof Node\Expr\Variable) {
+                } elseif (
+                    $this->inClosure &&
+                    !$this->inClass &&
+                    $node instanceof Node\Expr\Variable
+                ) {
                     if ($node->name === 'this') {
-                        throw new ScopeException('Using $this in the parallel closure is prohibited');
+                        throw new ScopeException(
+                            'Using $this in the parallel closure is prohibited. Line: ' .
+                            $node->getAttribute('startLine')
+                        );
                     }
                 } elseif ($node instanceof Node\Stmt\Echo_) {
                     ComponentFactory::logger()->warn(
@@ -124,7 +131,10 @@ class Runner extends Component {
                 } elseif ($node instanceof Node\Expr\Closure) {
                     /** @var Node\Expr\Closure $node */
                     if (!empty($node->uses)) {
-                        throw new ScopeException('Cannot use variables outside closure scope with parallel runner.');
+                        throw new ScopeException(
+                            'Cannot use variables outside closure scope with parallel runner. Line: ' .
+                            $node->getAttribute('startLine')
+                        );
                     }
                     $attrs = $node->getAttributes();
                     if ($this->range === [$attrs['startLine'], $attrs['endLine']]) {
@@ -289,3 +299,4 @@ class Runner extends Component {
         return true;
     }
 }
+
