@@ -14,6 +14,10 @@ use x2ts\event\Event;
 class PreRun extends Event {
     const NAME = 'x2ts.parallel.PreRun';
 
+    public static function name(): string {
+        return self::NAME;
+    }
+
     public $code;
 
     public $args;
@@ -25,6 +29,6 @@ class PreRun extends Event {
             'args'       => [],
         ]
     ) {
-        parent::__construct(self::NAME, $props);
+        parent::__construct($props);
     }
 }

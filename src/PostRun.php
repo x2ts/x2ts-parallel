@@ -28,6 +28,10 @@ class PostRun extends Event {
             'result'     => null,
         ]
     ) {
-        parent::__construct(self::NAME, $props);
+        parent::__construct($props);
+    }
+
+    public static function name(): string {
+        return self::NAME;
     }
 }

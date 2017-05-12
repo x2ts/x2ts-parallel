@@ -10,7 +10,7 @@
     }
   ],
   "require": {
-    "x2ts/x2ts": "^2.0",
+    "x2ts/x2ts": "^2.1",
     "ext-swoole": ">=1.9.6",
     "ext-Reflection": ">=7.0",
     "nikic/php-parser": "^3.0"
