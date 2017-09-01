@@ -12,36 +12,40 @@ use x2ts\ComponentFactory as X;
 use x2ts\db\DataBaseException;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
+$abc = 1;
+array_map(function ($item) use ($abc) {
+    return $abc;
+}, [1, 2, 3]);
 
 /** @var Runner $p */
 $p = X::getInstance(Runner::class, [
     function ($abc, $def = 'aa') {
-    try {
-        if (is_array($abc)) {
-            $abc = serialize($abc);
-        }
-        (new class('hehe') {
-            private $good;
-
-            public function __construct($good) {
-                $this->good = $good;
+        try {
+            if (is_array($abc)) {
+                $abc = serialize($abc);
             }
+            (new class('hehe') {
+                private $good;
 
-            public function abc() {
-                echo $this->good;
-            }
-        })->abc();
+                public function __construct($good) {
+                    $this->good = $good;
+                }
+
+                public function abc() {
+                    echo $this->good;
+                }
+            })->abc();
 //        echo get_class($this);
-        echo "$abc$def\n";
-        sleep(1);
-        echo "$abc wake up \n";
-    } catch (DataBaseException $ex) {
-        echo DataBaseException::class;
-        echo $ex->getMessage();
-    } catch (ScopeException $ex) {
-        echo $ex->getMessage();
-    }
-}], [
+            echo "$abc$def\n";
+            sleep(1);
+            echo "$abc wake up \n";
+        } catch (DataBaseException $ex) {
+            echo DataBaseException::class;
+            echo $ex->getMessage();
+        } catch (ScopeException $ex) {
+            echo $ex->getMessage();
+        }
+    }], [
     'sock'        => __DIR__ . '/parallel.sock',
     'pid'         => __DIR__ . '/parallel.pid',
     'lock'        => __DIR__ . '/parallel.lock',

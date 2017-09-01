@@ -129,16 +129,16 @@ class Runner extends Component {
                         '. Output would be shown in the console of parallel runner.'
                     );
                 } elseif ($node instanceof Node\Expr\Closure) {
-                    /** @var Node\Expr\Closure $node */
-                    if (!empty($node->uses)) {
+                    $attrs = $node->getAttributes();
+                    if ($this->range === [$attrs['startLine'], $attrs['endLine']]) {
+                        $this->inClosure = true;
+                    }
+
+                    if ($this->inClosure && !empty($node->uses)) {
                         throw new ScopeException(
                             'Cannot use variables outside closure scope with parallel runner. Line: ' .
                             $node->getAttribute('startLine')
                         );
-                    }
-                    $attrs = $node->getAttributes();
-                    if ($this->range === [$attrs['startLine'], $attrs['endLine']]) {
-                        $this->inClosure = true;
                     }
                 }
             }
