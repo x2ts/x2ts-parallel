@@ -36,6 +36,10 @@ class Runner extends Component {
 
     private $code;
 
+    private $profile = false;
+
+    private $name = 'anonymous';
+
     /**
      * @var Server
      */
@@ -183,6 +187,15 @@ class Runner extends Component {
         return $closureSource;
     }
 
+    public function name(string $name) {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function profile() {
+        $this->profile = true;
+    }
+
     public function run(...$args) {
         if (empty($this->code)) {
             ComponentFactory::logger()->crit('You must init parallel runner with closure before run');
@@ -192,6 +205,8 @@ class Runner extends Component {
         $msg = swoole_serialize::pack([
             'function' => $this->code,
             'args'     => $args,
+            'name'     => $this->name,
+            'profile'  => $this->profile,
         ]);
         $header = 'R';
         $len = strlen($msg);
@@ -200,6 +215,8 @@ class Runner extends Component {
         $client->connect($this->conf['sock'], 0);
         $client->send($header . $msg);
         $client->close();
+        $this->name = 'anonymous';
+        $this->profile = false;
     }
 
     public function start() {
@@ -263,6 +280,8 @@ class Runner extends Component {
             'dispatcher' => $this,
             'code'       => $call['function'],
             'args'       => $call['args'],
+            'name'       => $call['name'],
+            'profile'    => $call['profile'],
         ]));
         /** @var Closure $f */
         eval("\$f = {$call['function']};");
@@ -271,6 +290,8 @@ class Runner extends Component {
             'dispatcher' => $this,
             'code'       => $call['function'],
             'args'       => $call['args'],
+            'name'       => $call['name'],
+            'profile'    => $call['profile'],
             'result'     => $r,
         ]));
     }

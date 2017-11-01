@@ -18,6 +18,10 @@ class PostRun extends Event {
 
     public $args;
 
+    public $name;
+
+    public $profile;
+
     public $result;
 
     public function __construct(
@@ -25,6 +29,8 @@ class PostRun extends Event {
             'dispatcher' => null,
             'code'       => '',
             'args'       => [],
+            'name'       => 'anonymous',
+            'profile'    => false,
             'result'     => null,
         ]
     ) {

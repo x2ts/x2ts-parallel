@@ -22,11 +22,17 @@ class PreRun extends Event {
 
     public $args;
 
+    public $name;
+
+    public $profile;
+
     public function __construct(
         array $props = [
             'dispatcher' => null,
             'code'       => '',
             'args'       => [],
+            'name'       => 'anonymous',
+            'profile'    => false,
         ]
     ) {
         parent::__construct($props);
