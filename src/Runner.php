@@ -192,8 +192,9 @@ class Runner extends Component {
         return $this;
     }
 
-    public function profile() {
-        $this->profile = true;
+    public function profile(bool $enable = true) {
+        $this->profile = $enable;
+        return $this;
     }
 
     public function run(...$args) {
