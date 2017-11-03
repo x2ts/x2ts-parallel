@@ -20,7 +20,7 @@ use Swoole\Client;
 use Swoole\Server;
 use swoole_serialize;
 use x2ts\Component;
-use x2ts\ComponentFactory;
+use x2ts\ComponentFactory as X;
 
 class Runner extends Component {
     protected static $_conf = [
@@ -128,7 +128,7 @@ class Runner extends Component {
                         );
                     }
                 } elseif ($node instanceof Node\Stmt\Echo_) {
-                    ComponentFactory::logger()->warn(
+                    X::logger()->warn(
                         'echo is used in the closure on line ' . $node->getAttribute('startLine') .
                         '. Output would be shown in the console of parallel runner.'
                     );
@@ -199,9 +199,11 @@ class Runner extends Component {
 
     public function run(...$args) {
         if (empty($this->code)) {
-            ComponentFactory::logger()->crit('You must init parallel runner with closure before run');
+            X::logger()->crit('You must init parallel runner with closure before run');
             return;
         }
+
+        X::bus()->dispatch(new BeforeInvoke(['dispatcher' => $this]));
 
         $msg = swoole_serialize::pack([
             'function' => $this->code,
@@ -218,11 +220,12 @@ class Runner extends Component {
         $client->close();
         $this->name = 'anonymous';
         $this->profile = false;
+        X::bus()->dispatch(new AfterInvoke(['dispatcher' => $this]));
     }
 
     public function start() {
         if ($this->code) {
-            ComponentFactory::logger()->crit('Do not call start() on the client side!');
+            X::logger()->crit('Do not call start() on the client side!');
             return;
         }
         $this->server = new Server($this->conf['sock'], 0, SWOOLE_PROCESS, SWOOLE_SOCK_UNIX_STREAM);
@@ -239,11 +242,11 @@ class Runner extends Component {
             'package_max_length'    => 52428800, // 50M
         ]);
         $this->server->on('start', function (Server $server) {
-            ComponentFactory::logger()->notice('Parallel runner start ' . $server->master_pid);
+            X::logger()->notice('Parallel runner start ' . $server->master_pid);
             @swoole_set_process_name($this->conf['name'] . ': master');
             if ($this->conf['pid']) {
                 if (false === @file_put_contents($this->conf['pid'], $server->master_pid)) {
-                    ComponentFactory::logger()->warn('Cannot put pid file. ' .
+                    X::logger()->warn('Cannot put pid file. ' .
                         (error_get_last() ?? '')
                     );
                 }
@@ -257,11 +260,11 @@ class Runner extends Component {
             }
         });
         $this->server->on('WorkerStart', function (Server $server) {
-            ComponentFactory::logger()->notice('Parallel worker start ' . $server->worker_pid);
+            X::logger()->notice('Parallel worker start ' . $server->worker_pid);
             @swoole_set_process_name($this->conf['name'] . ': worker');
         });
         $this->server->on('WorkerStop', function (Server $server) {
-            ComponentFactory::logger()->notice("Worker {$server->worker_pid} exit");
+            X::logger()->notice("Worker {$server->worker_pid} exit");
         });
         $this->server->on('receive', function (Server $server, int $fd, $fromId, $data) {
             $this->runInWorker($data);
@@ -275,9 +278,9 @@ class Runner extends Component {
     protected function runInWorker($data) {
         $msg = substr($data, 5);
         $call = swoole_serialize::unpack($msg);
-//        ComponentFactory::logger()->trace("Code to be run:\n" . $call['function']);
-//        ComponentFactory::logger()->trace($call['args']);
-        ComponentFactory::bus()->dispatch(new PreRun([
+//        X::logger()->trace("Code to be run:\n" . $call['function']);
+//        X::logger()->trace($call['args']);
+        X::bus()->dispatch(new PreRun([
             'dispatcher' => $this,
             'code'       => $call['function'],
             'args'       => $call['args'],
@@ -287,7 +290,10 @@ class Runner extends Component {
         /** @var Closure $f */
         eval("\$f = {$call['function']};");
         $r = $f(...$call['args']);
-        ComponentFactory::bus()->dispatch(new PostRun([
+        if ($r !== null) {
+            X::logger()->warn('The closure run in parallel process should not return a value');
+        }
+        X::bus()->dispatch(new PostRun([
             'dispatcher' => $this,
             'code'       => $call['function'],
             'args'       => $call['args'],
@@ -303,18 +309,18 @@ class Runner extends Component {
             return true;
         }
 
-        ComponentFactory::logger()->trace('Try to take the lock.');
+        X::logger()->trace('Try to take the lock.');
         if (!is_file($lockFile)) {
             $r = touch($lockFile);
             if (!$r) {
-                ComponentFactory::logger()->error('Failed to create lock file ' . $lockFile);
+                X::logger()->error('Failed to create lock file ' . $lockFile);
                 return false;
             }
         }
         $this->locker = @fopen($lockFile, 'wb');
         $locked = is_resource($this->locker) ? flock($this->locker, LOCK_EX | LOCK_NB) : false;
         if (!$locked) {
-            ComponentFactory::logger()->error('Parallel start failed since lock has been taken');
+            X::logger()->error('Parallel start failed since lock has been taken');
             return false;
         }
 
