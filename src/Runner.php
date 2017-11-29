@@ -107,7 +107,7 @@ class Runner extends Component {
                     if (isset($this->uses[$class])) {
                         $this->replaces[] = $node;
                     } else if (class_exists("$this->namespace\\$class")) {
-                        $this->uses[$class] = "$this->namespace\\$class";
+                        $this->uses[$class] = ltrim("$this->namespace\\$class", '\\');
                         $this->replaces[] = $node;
                     }
                 } elseif ($node instanceof Node\Stmt\Namespace_) {
