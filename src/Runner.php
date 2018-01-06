@@ -101,6 +101,12 @@ class Runner extends Component {
 
             private $replaces = [];
 
+            /**
+             * @param Node $node
+             *
+             * @return int|null|Node|void
+             * @throws ScopeException
+             */
             public function enterNode(Node $node) {
                 if ($this->inClosure && $node instanceof Node\Name) {
                     $class = (string) $node;
@@ -136,13 +142,12 @@ class Runner extends Component {
                     $attrs = $node->getAttributes();
                     if ($this->range === [$attrs['startLine'], $attrs['endLine']]) {
                         $this->inClosure = true;
-                    }
-
-                    if ($this->inClosure && !empty($node->uses)) {
-                        throw new ScopeException(
-                            'Cannot use variables outside closure scope with parallel runner. Line: ' .
-                            $node->getAttribute('startLine')
-                        );
+                        if (empty($node->uses)) {
+                            throw new ScopeException(
+                                'Cannot use variables outside closure scope with parallel runner. Line: ' .
+                                $node->getAttribute('startLine')
+                            );
+                        }
                     }
                 }
             }
