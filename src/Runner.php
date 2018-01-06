@@ -142,7 +142,7 @@ class Runner extends Component {
                     $attrs = $node->getAttributes();
                     if ($this->range === [$attrs['startLine'], $attrs['endLine']]) {
                         $this->inClosure = true;
-                        if (empty($node->uses)) {
+                        if (!empty($node->uses)) {
                             throw new ScopeException(
                                 'Cannot use variables outside closure scope with parallel runner. Line: ' .
                                 $node->getAttribute('startLine')
