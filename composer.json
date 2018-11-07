@@ -13,7 +13,7 @@
     "x2ts/x2ts": "^2.1",
     "ext-swoole": ">=1.9.6",
     "ext-Reflection": ">=7.0",
-    "nikic/php-parser": "^3.0"
+    "nikic/php-parser": "~3.0|~4.0"
   },
   "autoload": {
     "psr-4": {
