@@ -18,7 +18,6 @@ use PhpParser\ParserFactory;
 use ReflectionFunction;
 use Swoole\Client;
 use Swoole\Server;
-use swoole_serialize;
 use x2ts\Component;
 use x2ts\ComponentFactory as X;
 
@@ -48,13 +47,16 @@ class Runner extends Component {
     private $locker;
 
     public function __construct($closure = null) {
-        if ($closure instanceof Closure) {
-            $this->code = $this->parseClosure($closure);
-        }
+        $this->func($closure);
     }
 
     public function __reconstruct($closure = null) {
+        $this->func($closure);
+    }
+
+    public function func($closure) {
         if ($closure instanceof Closure) {
+            $this->reset();
             $this->code = $this->parseClosure($closure);
         }
     }
@@ -68,9 +70,6 @@ class Runner extends Component {
         $stmts = (new ParserFactory)->create(ParserFactory::ONLY_PHP7, new Lexer([
             'usedAttributes' => ['startLine', 'endLine', 'startFilePos', 'endFilePos'],
         ]))->parse($code);
-//        ini_set('xdebug.var_display_max_depth', 500);
-//        var_dump($stmts);
-//        exit();
         $closureSource = '';
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new class($code, [$sl, $el], $closureSource) extends NodeVisitorAbstract {
@@ -116,13 +115,13 @@ class Runner extends Component {
                         $this->uses[$class] = ltrim("$this->namespace\\$class", '\\');
                         $this->replaces[] = $node;
                     }
-                } elseif ($node instanceof Node\Stmt\Namespace_) {
+                } else if ($node instanceof Node\Stmt\Namespace_) {
                     $this->namespace = (string) $node->name;
-                } elseif ($node instanceof Node\Stmt\UseUse) {
+                } else if ($node instanceof Node\Stmt\UseUse) {
                     $this->uses[$node->alias] = (string) $node->name;
-                } elseif ($this->inClosure && $node instanceof Node\Stmt\Class_) {
+                } else if ($this->inClosure && $node instanceof Node\Stmt\Class_) {
                     $this->inClass = true;
-                } elseif (
+                } else if (
                     $this->inClosure &&
                     !$this->inClass &&
                     $node instanceof Node\Expr\Variable
@@ -133,12 +132,12 @@ class Runner extends Component {
                             $node->getAttribute('startLine')
                         );
                     }
-                } elseif ($node instanceof Node\Stmt\Echo_) {
+                } else if ($node instanceof Node\Stmt\Echo_) {
                     X::logger()->warn(
                         'echo is used in the closure on line ' . $node->getAttribute('startLine') .
                         '. Output would be shown in the console of parallel runner.'
                     );
-                } elseif ($node instanceof Node\Expr\Closure) {
+                } else if ($node instanceof Node\Expr\Closure) {
                     $attrs = $node->getAttributes();
                     if ($this->range === [$attrs['startLine'], $attrs['endLine']]) {
                         $this->inClosure = true;
@@ -202,6 +201,13 @@ class Runner extends Component {
         return $this;
     }
 
+    public function reset() {
+        $this->name = 'anonymous';
+        $this->profile = false;
+        $this->code = null;
+        return $this;
+    }
+
     public function run(...$args) {
         if (empty($this->code)) {
             X::logger()->crit('You must init parallel runner with closure before run');
@@ -210,22 +216,20 @@ class Runner extends Component {
 
         X::bus()->dispatch(new BeforeInvoke(['dispatcher' => $this]));
 
-        $msg = swoole_serialize::pack([
-            'function' => $this->code,
-            'args'     => $args,
-            'name'     => $this->name,
-            'profile'  => $this->profile,
+        $msgBody = msgpack_pack([
+            'f' => $this->code,
+            'a' => $args,
+            'n' => $this->name,
+            'p' => $this->profile,
         ]);
-        $header = 'R';
-        $len = strlen($msg);
-        $header .= pack('N', $len);
         $client = new Client(SWOOLE_SOCK_UNIX_STREAM, SWOOLE_SOCK_SYNC);
         $client->connect($this->conf['sock'], 0);
-        $client->send($header . $msg);
+        $client->send(
+            'S' . pack('N', strlen($msgBody)) . $msgBody
+        );
         $client->close();
-        $this->name = 'anonymous';
-        $this->profile = false;
         X::bus()->dispatch(new AfterInvoke(['dispatcher' => $this]));
+        return $this;
     }
 
     public function start() {
@@ -282,28 +286,29 @@ class Runner extends Component {
 
     protected function runInWorker($data) {
         $msg = substr($data, 5);
-        $call = swoole_serialize::unpack($msg);
-//        X::logger()->trace("Code to be run:\n" . $call['function']);
-//        X::logger()->trace($call['args']);
+        $call = msgpack_unpack($msg);
+        X::logger()->trace('Running: ' . $call['n']);
+        X::logger()->trace("Code to be run:\n" . $call['f']);
+        X::logger()->trace($call['a']);
         X::bus()->dispatch(new PreRun([
             'dispatcher' => $this,
-            'code'       => $call['function'],
-            'args'       => $call['args'],
-            'name'       => $call['name'],
-            'profile'    => $call['profile'],
+            'code'       => $call['f'],
+            'args'       => $call['a'],
+            'name'       => $call['n'],
+            'profile'    => $call['p'],
         ]));
         /** @var Closure $f */
-        eval("\$f = {$call['function']};");
-        $r = $f(...$call['args']);
+        eval("\$f = {$call['f']};");
+        $r = $f(...$call['a']);
         if ($r !== null) {
             X::logger()->warn('The closure run in parallel process should not return a value');
         }
         X::bus()->dispatch(new PostRun([
             'dispatcher' => $this,
-            'code'       => $call['function'],
-            'args'       => $call['args'],
-            'name'       => $call['name'],
-            'profile'    => $call['profile'],
+            'code'       => $call['f'],
+            'args'       => $call['a'],
+            'name'       => $call['n'],
+            'profile'    => $call['p'],
             'result'     => $r,
         ]));
     }
